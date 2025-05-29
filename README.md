@@ -14,8 +14,7 @@
 <img src="https://github.com/user-attachments/assets/f9c29694-b828-4e1c-8746-3515d9737411" alt="ffpe_auc_new" width="300"/>  <img src="https://github.com/user-attachments/assets/8a0fbfb8-1f8c-4d0b-94d8-56871dfd0bad" width="300"/> 
 
 
-**Investigate feature selected genes:
-**
+**Investigate feature selected genes:**
 
 <img src="https://github.com/user-attachments/assets/e1aa31c1-84ca-43ea-b164-abf82b94f705" alt="varimp_plot" width="400"/> 
 

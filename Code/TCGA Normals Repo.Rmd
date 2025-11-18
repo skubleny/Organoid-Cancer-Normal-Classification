@@ -1,0 +1,156 @@
+---
+title: "TCGA normals"
+author: "Daniel Skubleny"
+date: "05/04/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+
+#Preprocessing
+Data available at cbio portal https://www.cbioportal.org/datasets. Download "Stomach Adenocarcinoma (TCGA, PanCancer Atlas)"
+##Load Data 
+```{r, warning= FALSE, message=FALSE}
+#Load Data
+edata_norm <- read.csv("~/data_RNA_Seq_v2_mRNA_median_normals_ENTREZUPDATED.csv")
+```
+
+```{r}
+#Annotate entrez ID
+annotatedfdata_norm = AnnotationDbi::select(org.Hs.eg.db,keys = as.character(edata_norm$Entrez_Gene_Id), columns = c("SYMBOL","ENTREZID","ENSEMBL"), keytype = "ENTREZID")
+```
+```{r}
+# Change column name to ENTREZID in edata 
+colnames(edata_norm)[which(names(edata_norm) == "Entrez_Gene_Id")] <- "ENTREZID"
+
+edata_norm = merge(annotatedfdata_norm,edata_norm, by.x="ENTREZID")
+```
+
+```{r}
+#Remove EnsembleID, HUGO and Entrez ID
+edata_norm = dplyr::select(edata_norm, -c("Hugo_Symbol","ENTREZID","ENSEMBL")) # Remove HUGO columns
+```
+## Check for NA
+```{r}
+table(is.na(edata_norm$SYMBOL))
+# There is NA due to Entrez Ids that no longer map to gene symbols. 
+```
+```{r}
+#Remove NA Symbols
+edata_norm = edata_norm[!is.na(edata_norm$SYMBOL),]
+```
+## Check for duplicates
+```{r}
+table(duplicated(edata_norm$SYMBOL))
+```
+```{r}
+#Aggregate duplicate genes by mean
+edata_norm %>% group_by(SYMBOL) %>% summarise_all(mean) %>% data.frame() -> edata_norm_merged
+edata_norm = edata_norm_merged
+ #Aggregate and mean duplicate ENTREZIDs 
+```
+
+
+
+##Check for NA genes and NA feature data
+```{r}
+table(is.na(edata_norm$SYMBOL))
+#There is NA Entrez Genes 
+```
+
+```{r}
+table(is.na(edata_norm))
+#There is NA data. We will need to investigate this later on. 
+```
+
+
+
+
+## Make gene SYMBOL row names
+```{r}
+#This ensures we can set up a matrix for future procedures
+edata_norm = data.frame(edata_norm, row.names = "SYMBOL")
+```
+
+
+Boxplot
+```{r}
+# Look at data that is not transformed vs transformed
+par(mfrow=c(1,2))
+boxplot(edata_norm, col=2, range=0)
+boxplot(log2(edata_norm+1), col=2, range=0)
+```
+Histogram
+```{r}
+par(mfrow=c(1,2))
+hist(edata_norm[,1],col=2)
+hist(log2(edata_norm[,1]+1),col=3)
+```
+Density Plot
+```{r}
+par(mfrow=c(1,2))
+omitted = na.omit(edata_norm)
+plot(density(omitted[,1]),col=2)
+lines(density(omitted[,2]),col=3)
+plot(density(log2(omitted[,1]+1)),col=2)
+lines(density(log2(omitted[,2]+1)),col=3)
+```
+qqPlot
+```{r}
+par(mfrow=c(1,2))
+qqplot(edata_norm[,1], edata_norm[,2],col=3)
+qqplot(log2(edata_norm[,1]+1), log2(edata_norm[,2]+1),col=3)
+```
+Bland Altman Plot
+```{r}
+# Bland Altman Plot
+mm = edata_norm[,1] - edata_norm[,2]
+aa = edata_norm[,1] + edata_norm[,2]
+plot(aa,mm,col=2) 
+```
+Let's reassess after a log2 transform 
+```{r}
+# Bland Altman Plot
+mm = log2(edata_norm[,1]+1) - log2(edata_norm[,2]+1)
+aa = log2(edata_norm[,1]+1) + log2(edata_norm[,2]+1)
+plot(aa,mm,col=2) 
+```
+
+##Transform data by log2 based on exploratory data analysis. 
+```{r}
+log_edata_norm = log2(edata_norm+1)
+```
+
+## Here we will remove low abundance genes because we know that concordance between nanostring and microarray or rnaseq platforms is best with higher abudnant, high dynamic range and more varaiable genes (Kwing et al. Biological Validation of RNA Sequencing Data From Formalin-Fixed Paraffin-Embedded Primary Melanomas, Richard et al. Comparison of gene expression microarray data with count-based RNA measurements informs microarray interpretation, Illumina. RNA-Seq Offers Significant Advantages in Immuno-Oncology Research)
+
+#Median intensity 
+```{r}
+median_TCGA_norm = rowMedians(as.matrix(log_edata_norm))
+hist(median_TCGA_norm, breaks=200)
+#Given this is RNAseq count data I will filter low expression genes by mean. 
+```
+
+
+```{r}
+log_edata_norm = as.data.frame(log_edata_norm)
+log_edata_norm = filter(log_edata_norm,rowMeans(log_edata_norm) > 1)
+dim(log_edata_norm)
+```
+
+#Quantile Normalization 
+
+```{r}
+#Check if quantile normalization is required.
+colramp = colorRampPalette(c(3,"white",2))(20)
+plot(density(log_edata_norm[,1]),col=colramp[1],lwd=1,ylim=c(0,.20))
+for(i in 2:30){lines(density(log_edata_norm[,i]),lwd=1,col=colramp[i])}
+#In the plot we can see that quantile normalization will aid in the data analysis
+```
+
+

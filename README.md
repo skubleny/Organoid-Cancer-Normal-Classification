@@ -1,6 +1,8 @@
 
 # Supervised classification of organoid as normal or cancer according to gene expression data
 
+<img width="2200" height="1120" alt="Copy of NormCanc_Organoid_GraphicalAbstract" src="https://github.com/user-attachments/assets/83202cfb-d178-43e8-963c-14f2ee2b228a" />
+
 
 **Normalize Nanostring Data:**
 
